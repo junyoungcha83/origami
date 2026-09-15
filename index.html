@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>종이접기</title>
-<link rel="stylesheet" href="assets/app.css?v=5" />
+<link rel="stylesheet" href="assets/app.css?v=6" />
 <link rel="manifest" href="manifest.webmanifest" />
 <meta name="theme-color" content="#e94f6b" />
 <link rel="icon" type="image/svg+xml" href="assets/icon.svg" />
@@ -79,8 +79,8 @@
       <input type="text" id="fTitle" autocomplete="off" placeholder="비워 두면 자동으로 채워져요" maxlength="120" />
     </label>
     <label class="field">
-      <span>메모 (선택)</span>
-      <input type="text" id="fNote" autocomplete="off" placeholder="난이도, 종이 크기 등" maxlength="120" />
+      <span>메모 (5자이내)</span>
+      <input type="text" id="fNote" autocomplete="off" placeholder="예: 쉬움 · 어려움 · 15cm" maxlength="5" />
     </label>
 
     <div class="preview hidden" id="preview"></div>
@@ -154,7 +154,7 @@
   </div>
 </div>
 
-<script src="assets/app.js?v=5"></script>
+<script src="assets/app.js?v=6"></script>
 <script>
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
     let reloaded = false;

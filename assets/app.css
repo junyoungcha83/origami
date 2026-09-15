@@ -194,3 +194,8 @@ body:not(.readonly):not(.deleting) .card-edit{ display:block; }
 /* 고치는 중에는 종류(유튜브/파일)를 바꿀 수 없다 */
 .seg.locked{ opacity:.55; }
 .seg.locked button{ cursor:default; }
+
+/* 메모 딱지 — 썸네일 위에 얹으므로 그림과 섞이지 않게 그림자를 깐다.
+   다섯 자까지라 줄바꿈은 없지만, 옛 자료에 긴 메모가 있으면 잘라 보여 준다. */
+.badge{ max-width:70%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  box-shadow:0 2px 6px rgba(0,0,0,.35); }

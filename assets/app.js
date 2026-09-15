@@ -8,13 +8,14 @@
 // X·페이스북·네이버는 자기네 재생기만 허용하고 배속 조작을 안 열어 줘서 아예 안 받는다.
 'use strict';
 
-const APP_VER = 'v5';
+const APP_VER = 'v6';
 const API_BASE = 'https://origami-api.junyoung-cha83.workers.dev';
 const STORAGE_KEY = 'origami-state-v1';
 const TOKEN_KEY = 'origami-edit-token';
 const SAVE_DEBOUNCE_MS = 800;
 const PART_SIZE = 8 * 1024 * 1024;     // 조각 하나 크기. R2 는 마지막 조각 말고는 5MiB 이상이어야 한다.
 const POSTER_W = 360;                  // 목록에 쓸 미리보기 그림 가로폭
+const NOTE_MAX = 5;                    // 메모 — 썸네일 딱지에 얹으므로 짧아야 한다
 
 let state = { version: 1, cats: [], items: [] };
 let activeCat = '';
@@ -233,13 +234,14 @@ function render() {
     const thumb = it.kind === 'youtube'
       ? (it.poster || `https://img.youtube.com/vi/${esc(it.vid)}/hqdefault.jpg`)
       : it.poster;
+    // 왼쪽 위 딱지에는 메모를 띄운다('쉬움' '15cm' 처럼 짧게). 메모가 없으면 딱지도 없다.
+    // 딱지 색은 종류(유튜브/내 영상)에 따라 그대로 두어, 글자를 읽지 않아도 어느 쪽인지 보인다.
     return `<article class="card" data-id="${esc(it.id)}">
       <div class="thumb">${thumb ? `<img src="${esc(thumb)}" alt="" loading="lazy" />` : '<span class="noimg">🎞</span>'}
-        <span class="badge ${it.kind}">${it.kind === 'youtube' ? '유튜브' : '내 영상'}</span>
+        ${it.note ? `<span class="badge ${it.kind}">${esc(it.note)}</span>` : ''}
         <span class="play">▶</span></div>
       <div class="meta">
         <h3>${esc(it.title || '(제목 없음)')}</h3>
-        ${it.note ? `<p class="note">${esc(it.note)}</p>` : ''}
         ${it.kind === 'file' && it.size ? `<p class="sub">${esc(fmtSize(it.size))}</p>` : ''}
       </div>
       <button type="button" class="card-edit" data-edit="${esc(it.id)}" aria-label="고치기">✏️</button>
@@ -456,7 +458,7 @@ async function saveAdd() {
   }
 
   const title = $('fTitle').value.trim();
-  const note = $('fNote').value.trim();
+  const note = $('fNote').value.trim().slice(0, NOTE_MAX);
   $('addSave').disabled = true;
 
   const edit = editItemId ? state.items.find(x => x.id === editItemId) : null;
