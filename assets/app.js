@@ -8,7 +8,7 @@
 // X·페이스북·네이버는 자기네 재생기만 허용하고 배속 조작을 안 열어 줘서 아예 안 받는다.
 'use strict';
 
-const APP_VER = 'v1';
+const APP_VER = 'v2';
 const API_BASE = 'https://origami-api.junyoung-cha83.workers.dev';
 const STORAGE_KEY = 'origami-state-v1';
 const TOKEN_KEY = 'origami-edit-token';
@@ -496,6 +496,7 @@ async function openPlayer(id) {
   cur = it;
   abA = abB = null; loopOn = false; rate = 1;
   $('playerTitle').textContent = it.title || '';
+  showStageMsg(''); applyAvailableRates([]);      // 앞 영상에서 잠가 둔 배속·안내를 푼다
   $('player').classList.remove('hidden');
   document.body.classList.add('playing');
   // 뒤로가기로 닫히게 — 폰에서 재생 중 뒤로가기를 누르면 앱이 꺼지는 게 아니라 목록으로
@@ -514,11 +515,27 @@ async function openPlayer(id) {
       videoId: it.vid,
       playerVars: { rel: 0, modestbranding: 1, playsinline: 1 },
       events: {
-        onReady: e => { ctl = ytAdapter(e.target); e.target.playVideo(); applyRate(); startTick(); },
+        onReady: e => {
+          ctl = ytAdapter(e.target);
+          // 영상마다 열어 주는 배속이 다르다. 생중계처럼 [1] 만 주는 것이 있는데,
+          // 그때 단추를 그대로 두면 눌러도 아무 일이 없어 고장처럼 보인다.
+          let rates = [];
+          try { rates = e.target.getAvailablePlaybackRates() || []; } catch {}
+          applyAvailableRates(rates);
+          e.target.playVideo(); applyRate(); startTick();
+        },
         // 끝까지 갔을 때의 되풀이는 여기서 잡는다(구간반복은 따로 시계를 돌린다)
         onStateChange: e => {
           if (e.data === YT.PlayerState.ENDED && loopOn) { ctl.seek(abA ?? 0); ctl.play(); }
           syncPlayBtn();
+        },
+        // 올린 이가 '다른 사이트에서 재생 막기' 를 걸어 둔 영상이 있다(오류 101·150).
+        // 그냥 두면 까만 화면만 남아 앱이 고장 난 것처럼 보인다.
+        onError: e => {
+          const why = (e.data === 101 || e.data === 150) ? '이 영상은 올린 이가 다른 앱에서 재생하지 못하게 막아 두었어요.'
+            : e.data === 100 ? '영상을 찾을 수 없어요. 지워졌거나 비공개일 수 있어요.'
+            : '영상을 재생할 수 없어요.';
+          showStageMsg(why + ' 아래 ‘유튜브에서 ↗’ 로 열어 주세요. (배속·구간반복은 유튜브 앱에서는 못 씁니다)');
         },
       },
     });
@@ -530,6 +547,7 @@ async function openPlayer(id) {
     ctl = videoAdapter(vidEl);
     vidEl.onended = () => { if (loopOn) { ctl.seek(abA ?? 0); ctl.play(); } };
     vidEl.onplay = vidEl.onpause = syncPlayBtn;
+    vidEl.onerror = () => showStageMsg('영상을 불러오지 못했어요. 인터넷을 확인해 주세요.');
     vidEl.play().catch(() => {});
     applyRate(); startTick();
   }
@@ -550,6 +568,27 @@ function closePlayer(fromPop) {
   if (!fromPop) { try { if (history.state && history.state.player) history.back(); } catch {} }
 }
 
+function showStageMsg(t) {
+  const el = $('stageMsg');
+  el.textContent = t;
+  el.classList.toggle('hidden', !t);
+}
+// 그 영상이 못 쓰는 배속은 눌리지 않게 잠근다. 목록을 못 받았으면(내 파일 등)
+// 전부 열어 둔다 — <video> 는 어떤 배속이든 받는다.
+function applyAvailableRates(rates) {
+  const has = r => !rates.length || rates.includes(r);
+  document.querySelectorAll('#rateSeg button').forEach(b => {
+    const r = Number(b.dataset.rate);
+    b.disabled = !has(r);
+    b.title = has(r) ? '' : '이 영상은 이 빠르기를 쓸 수 없어요';
+  });
+  if (rates.length && !has(rate)) setRate(1);
+  // 배속을 아예 안 여는 영상이면 까닭을 알려 준다
+  if (rates.length === 1 && rates[0] === 1) {
+    showStageMsg('이 영상은 유튜브가 빠르기 조절을 열어 주지 않아요(생중계 등). 반복과 구간반복은 그대로 됩니다.');
+    setTimeout(() => showStageMsg(''), 5000);
+  }
+}
 function applyRate() { if (ctl) { try { ctl.setRate(rate); } catch {} } }
 function setRate(r) {
   rate = r; applyRate();

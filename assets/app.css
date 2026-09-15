@@ -169,3 +169,10 @@ body.playing .fab-add{ display:none; }
   .ctrl{ padding-left:20px; padding-right:20px; }
   .cards{ grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); }
 }
+
+/* 재생기 안내 — 재생이 막혔을 때 까만 화면만 남지 않게 */
+.stage{ position:relative; }
+.stage-msg{ position:absolute; inset:auto 12px 12px; background:rgba(20,16,15,.92);
+  border:1px solid rgba(255,255,255,.18); border-radius:12px; padding:12px 14px;
+  font-size:.82rem; line-height:1.55; color:#ffe9e4; }
+.ctrl .seg button:disabled{ opacity:.35; cursor:default; }

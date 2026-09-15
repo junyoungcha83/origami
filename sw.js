@@ -1,7 +1,7 @@
 // 종이접기 — 앱 껍데기 오프라인 캐시. CACHE 이름을 바꾸면 옛 캐시가 자동으로 버려진다.
 // 동영상(R2)과 목록(KV)은 캐시하지 않는다 — 영상은 너무 크고, 목록은 늘 최신이어야 한다.
-const CACHE = 'origami-v1';
-const ASSETS = ['./', './index.html', './assets/app.css?v=1', './assets/app.js?v=1',
+const CACHE = 'origami-v2';
+const ASSETS = ['./', './index.html', './assets/app.css?v=2', './assets/app.js?v=2',
   './manifest.webmanifest', './assets/icon.svg', './assets/icon-maskable.svg'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => Promise.all(ASSETS.map(u => c.add(u).catch(() => {})))));
