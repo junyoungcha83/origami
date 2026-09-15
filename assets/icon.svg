@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="종이학">
+  <!-- 종이학 — 접은 종이라 면마다 빛이 다르게 든다. 같은 색을 밝고 어둡게 나눠
+       칠해야 '접힌 것' 으로 보인다. 그래서 선을 하나도 쓰지 않고 면만으로 그렸다.
+       날개는 옆으로 넓게 펴 둔다. 위로 세우면 작게 줄었을 때 새가 아니라 V 로 보인다. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fff8f4"/><stop offset="1" stop-color="#ffe7e1"/>
+    </linearGradient>
+    <linearGradient id="lit" x1="0.1" y1="0" x2="0.8" y2="1">
+      <stop offset="0" stop-color="#ff93a6"/><stop offset="1" stop-color="#e94f6b"/>
+    </linearGradient>
+    <linearGradient id="dim" x1="1" y1="0" x2="0.2" y2="1">
+      <stop offset="0" stop-color="#cf3b57"/><stop offset="1" stop-color="#9e2440"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="64" height="64" rx="15" fill="url(#bg)"/>
+
+  <!-- 꼬리 — 오른쪽 위로 길게. 뒤쪽 날개와 겹치지 않게 각도를 벌린다 -->
+  <path d="M34 36 L60 17 L57 24 L38 41 Z" fill="url(#dim)"/>
+
+  <!-- 뒤쪽(오른) 날개 — 앞 날개보다 어둡게 두어야 앞뒤가 갈린다 -->
+  <path d="M33 31 L59 34 L43 43 Z" fill="url(#dim)"/>
+
+  <!-- 앞쪽(왼) 날개 -->
+  <path d="M31 31 L5 30 L22 43 Z" fill="url(#lit)"/>
+
+  <!-- 몸통 — 아래로 뾰족하게 내려오는 마름모 -->
+  <path d="M22 41 L32 29 L43 42 L32 57 Z" fill="url(#lit)"/>
+  <!-- 몸통 오른쪽 면은 그늘 -->
+  <path d="M32 29 L43 42 L32 57 Z" fill="#bf3450" opacity=".5"/>
+
+  <!-- 목 → 머리 -->
+  <path d="M28 33 L15 11 L21 10 L32 30 Z" fill="url(#dim)"/>
+  <path d="M15 11 L21 10 L18 5 Z" fill="#8a1f37"/>
+  <!-- 부리 -->
+  <path d="M18 5 L5 7 L16.5 10 Z" fill="#f4a72c"/>
+</svg>

@@ -1,0 +1,16 @@
+name = "origami-api"
+main = "src/index.js"
+compatibility_date = "2025-05-01"
+
+# 목록 JSON — npx wrangler kv namespace create ORIGAMI
+[[kv_namespaces]]
+binding = "ORIGAMI"
+id = "6e5ea736a69b4b518b5df4d771f99817"
+
+# 동영상 파일 — npx wrangler r2 bucket create origami-videos
+[[r2_buckets]]
+binding = "VIDEOS"
+bucket_name = "origami-videos"
+
+# 편집 비밀번호는 secret:
+#   echo "비밀번호" | npx wrangler secret put EDIT_TOKEN

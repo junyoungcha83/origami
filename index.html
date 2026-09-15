@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>종이접기</title>
+<link rel="stylesheet" href="assets/app.css?v=1" />
+<link rel="manifest" href="manifest.webmanifest" />
+<meta name="theme-color" content="#e94f6b" />
+<link rel="icon" type="image/svg+xml" href="assets/icon.svg" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="종이접기" />
+<link rel="apple-touch-icon" href="assets/icon.svg" />
+</head>
+<body>
+
+<header class="app-header">
+  <img class="app-logo" src="assets/icon.svg" alt="" />
+  <h1>종이접기</h1>
+  <span class="app-ver" id="appVer"></span>
+  <div class="header-right">
+    <span class="sync-status" id="syncStatus"></span>
+    <button class="icon-btn" id="btnDeleteMode" title="삭제 모드" aria-label="삭제 모드">🗑</button>
+    <button class="icon-btn" id="btnLock" title="편집 잠금/해제" aria-label="편집 잠금">🔒</button>
+  </div>
+</header>
+
+<!-- 분류 탭 — 데이터에서 그린다(renderTabs) -->
+<nav class="tabs" id="tabs" role="tablist" aria-label="분류"></nav>
+
+<main class="app-main">
+  <div class="cards" id="cards"></div>
+</main>
+
+<button class="fab-add" id="btnAdd" type="button" aria-label="영상 등록">＋</button>
+
+<!-- ── 등록 ───────────────────────────────────── -->
+<dialog id="addDialog" class="dialog">
+  <form id="addForm" method="dialog">
+    <h2 id="addTitle">영상 등록</h2>
+
+    <div class="seg" id="kindSeg">
+      <button type="button" data-kind="youtube" class="on">▶ 유튜브 링크</button>
+      <button type="button" data-kind="file">📁 동영상 파일</button>
+    </div>
+
+    <!-- 유튜브 -->
+    <label class="field" id="rowUrl">
+      <span>유튜브 주소</span>
+      <input type="url" id="fUrl" inputmode="url" autocomplete="off"
+             placeholder="https://youtu.be/… 또는 https://www.youtube.com/watch?v=…" />
+    </label>
+
+    <!-- 파일 -->
+    <div class="field hidden" id="rowFile">
+      <span>동영상 파일</span>
+      <button type="button" class="filepick" id="btnPickFile">폰에서 동영상 고르기</button>
+      <input type="file" accept="video/*" id="fFile" hidden />
+      <div class="filemeta hidden" id="fileMeta"></div>
+    </div>
+
+    <!-- 분류: 목록에 없으면 ＋ 로 그 자리에서 만든다 -->
+    <label class="field">
+      <span>분류</span>
+      <select id="fCat"></select>
+    </label>
+    <div class="field newcat hidden" id="rowNewCat">
+      <span>새 분류 이름</span>
+      <div class="newcat-row">
+        <input type="text" id="fNewCat" autocomplete="off" placeholder="예: 동물, 꽃, 상자" maxlength="12" />
+        <button type="button" class="btn small" id="btnNewCatOk">만들기</button>
+        <button type="button" class="btn small ghost" id="btnNewCatCancel">취소</button>
+      </div>
+    </div>
+
+    <label class="field">
+      <span>제목</span>
+      <input type="text" id="fTitle" autocomplete="off" placeholder="비워 두면 자동으로 채워져요" maxlength="120" />
+    </label>
+    <label class="field">
+      <span>메모 (선택)</span>
+      <input type="text" id="fNote" autocomplete="off" placeholder="난이도, 종이 크기 등" maxlength="120" />
+    </label>
+
+    <div class="preview hidden" id="preview"></div>
+    <div class="uploadbar hidden" id="uploadBar"><i id="uploadFill"></i><span id="uploadPct">0%</span></div>
+
+    <div class="dialog-actions">
+      <button type="button" class="btn ghost" id="addCancel">취소</button>
+      <button type="button" class="btn" id="addSave">등록</button>
+    </div>
+    <div class="add-status" id="addStatus"></div>
+  </form>
+</dialog>
+
+<!-- ── 분류 관리 ───────────────────────────────── -->
+<dialog id="catDialog" class="dialog">
+  <form method="dialog">
+    <h2>분류 관리</h2>
+    <div class="cat-add">
+      <input type="text" id="catNew" autocomplete="off" placeholder="새 분류 이름" maxlength="12" />
+      <button type="button" class="btn" id="catAdd">추가</button>
+    </div>
+    <ul class="cat-list" id="catList"></ul>
+    <p class="cat-note">안에 든 영상이 있으면 지울 수 없어요. 먼저 옮기거나 지워 주세요.</p>
+    <div class="dialog-actions">
+      <button type="button" class="btn ghost" id="catClose">닫기</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ── 재생기 ──────────────────────────────────
+     유튜브든 내가 올린 파일이든 같은 조작 막대를 쓴다. 종이접기는 어려운 대목을
+     느리게·되풀이해 봐야 해서, 배속과 구간반복이 이 앱의 핵심이다. -->
+<div class="player hidden" id="player" role="dialog" aria-modal="true">
+  <div class="player-bar">
+    <button class="player-close" id="playerClose" type="button">← 목록</button>
+    <span class="player-title" id="playerTitle"></span>
+    <a class="player-open hidden" id="playerOpen" target="_blank" rel="noopener noreferrer">유튜브에서 ↗</a>
+  </div>
+
+  <div class="stage" id="stage">
+    <div id="ytHost"></div>
+    <video id="vid" playsinline controls preload="metadata"></video>
+  </div>
+
+  <div class="ctrl">
+    <div class="ctrl-row">
+      <span class="ctrl-label">빠르기</span>
+      <div class="seg rate" id="rateSeg">
+        <button type="button" data-rate="0.5">0.5x</button>
+        <button type="button" data-rate="0.75">0.75x</button>
+        <button type="button" data-rate="1" class="on">보통</button>
+        <button type="button" data-rate="1.25">1.25x</button>
+      </div>
+    </div>
+
+    <div class="ctrl-row">
+      <button type="button" class="pill" id="btnBack5">⏪ 5초</button>
+      <button type="button" class="pill" id="btnPlay">⏸ 멈춤</button>
+      <button type="button" class="pill" id="btnFwd5">5초 ⏩</button>
+      <button type="button" class="pill toggle" id="btnLoop">🔁 반복</button>
+    </div>
+
+    <div class="ctrl-row ab">
+      <span class="ctrl-label">구간반복</span>
+      <button type="button" class="pill" id="btnA">A 여기</button>
+      <button type="button" class="pill" id="btnB">B 여기</button>
+      <button type="button" class="pill ghost" id="btnABoff">해제</button>
+      <span class="ab-view" id="abView">어려운 대목만 되풀이해서 볼 수 있어요</span>
+    </div>
+  </div>
+</div>
+
+<script src="assets/app.js?v=1"></script>
+<script>
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (reloaded) return; reloaded = true; location.reload();
+    });
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').then(reg => {
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') reg.update().catch(() => {});
+        });
+      }).catch(() => {});
+    });
+  }
+</script>
+</body>
+</html>
