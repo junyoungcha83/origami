@@ -8,7 +8,7 @@
 // X·페이스북·네이버는 자기네 재생기만 허용하고 배속 조작을 안 열어 줘서 아예 안 받는다.
 'use strict';
 
-const APP_VER = 'v4';
+const APP_VER = 'v5';
 const API_BASE = 'https://origami-api.junyoung-cha83.workers.dev';
 const STORAGE_KEY = 'origami-state-v1';
 const TOKEN_KEY = 'origami-edit-token';
