@@ -8,7 +8,7 @@
 // X·페이스북·네이버는 자기네 재생기만 허용하고 배속 조작을 안 열어 줘서 아예 안 받는다.
 'use strict';
 
-const APP_VER = 'v2';
+const APP_VER = 'v3';
 const API_BASE = 'https://origami-api.junyoung-cha83.workers.dev';
 const STORAGE_KEY = 'origami-state-v1';
 const TOKEN_KEY = 'origami-edit-token';
@@ -224,10 +224,12 @@ function render() {
         ${it.note ? `<p class="note">${esc(it.note)}</p>` : ''}
         ${it.kind === 'file' && it.size ? `<p class="sub">${esc(fmtSize(it.size))}</p>` : ''}
       </div>
+      <button type="button" class="card-edit" data-edit="${esc(it.id)}" aria-label="고치기">✏️</button>
       <button type="button" class="card-del" data-del="${esc(it.id)}" aria-label="지우기">×</button>
     </article>`;
   }).join('');
   box.querySelectorAll('.card').forEach(c => c.onclick = () => openPlayer(c.dataset.id));
+  box.querySelectorAll('.card-edit').forEach(b => b.onclick = e => { e.stopPropagation(); openAddDialog(b.dataset.edit); });
   box.querySelectorAll('.card-del').forEach(b => b.onclick = e => { e.stopPropagation(); removeItem(b.dataset.del); });
 }
 
@@ -246,6 +248,7 @@ async function removeItem(id) {
 
 // ══ 등록 ════════════════════════════════════════
 let addKind = 'youtube';
+let editItemId = null;          // 고치는 중인 항목(없으면 새로 등록)
 let pickedFile = null, pickedPoster = '', pickedDur = 0;
 
 function fillCatSelect() {
@@ -260,16 +263,47 @@ function toggleNewCatRow(on) {
   $('rowNewCat').classList.toggle('hidden', !on);
   if (on) setTimeout(() => $('fNewCat').focus(), 0);
 }
-function openAddDialog() {
+// id 를 주면 그 항목을 고치는 창이 된다. 등록과 같은 창을 쓰는 것은 칸이 똑같아서다 —
+// 따로 만들면 분류 ＋ 같은 손질을 두 곳에 해 넣어야 한다.
+function openAddDialog(id) {
   if (!canEdit()) { alert('먼저 🔒 를 눌러 편집 비밀번호를 넣어 주세요.'); return; }
-  setKind('youtube');
-  $('fUrl').value = ''; $('fTitle').value = ''; $('fNote').value = ''; $('fNewCat').value = '';
+  const it = id ? state.items.find(x => x.id === id) : null;
+  editItemId = it ? it.id : null;
+
   pickedFile = null; pickedPoster = ''; pickedDur = 0;
   $('fileMeta').classList.add('hidden'); $('fileMeta').innerHTML = '';
   $('preview').classList.add('hidden'); $('preview').innerHTML = '';
   $('uploadBar').classList.add('hidden'); $('addStatus').textContent = '';
   $('addSave').disabled = false;
+  $('fNewCat').value = '';
+
+  setKind(it ? it.kind : 'youtube');
+  // 고칠 때는 종류를 바꿀 수 없다. 유튜브 ↔ 파일 을 오가면 올려 둔 파일을 지울지
+  // 말지부터 정해야 해서, 차라리 새로 등록하고 옛것을 지우는 편이 헷갈리지 않는다.
+  document.querySelectorAll('#kindSeg button').forEach(b => b.disabled = !!it);
+  $('kindSeg').classList.toggle('locked', !!it);
+
+  $('addTitle').textContent = it ? '영상 수정' : '영상 등록';
+  $('addSave').textContent = it ? '저장' : '등록';
+  $('fUrl').value = it && it.kind === 'youtube' ? it.url : '';
+  $('fTitle').value = it ? it.title : '';
+  $('fNote').value = it ? it.note : '';
+
   fillCatSelect();
+  if (it && state.cats.some(c => c.id === it.cat)) { $('fCat').value = it.cat; toggleNewCatRow(false); }
+
+  // 파일 항목을 고칠 때는 지금 올라가 있는 것이 무엇인지 보여 준다
+  if (it && it.kind === 'file') {
+    $('btnPickFile').textContent = '다른 동영상으로 바꾸기';
+    const m = $('fileMeta');
+    m.classList.remove('hidden');
+    m.innerHTML = `${it.poster ? `<img src="${esc(it.poster)}" alt="" />` : ''}
+      <div><b>지금 올라가 있는 영상</b><span>${esc(fmtSize(it.size))} · 바꾸지 않으면 그대로 둡니다</span></div>`;
+  } else {
+    $('btnPickFile').textContent = '폰에서 동영상 고르기';
+  }
+  if (it && it.kind === 'youtube') lookupYoutube();
+
   $('addDialog').showModal();
 }
 function setKind(k) {
@@ -407,36 +441,58 @@ async function saveAdd() {
   const note = $('fNote').value.trim();
   $('addSave').disabled = true;
 
+  const edit = editItemId ? state.items.find(x => x.id === editItemId) : null;
+
   try {
     if (addKind === 'youtube') {
       const raw = $('fUrl').value.trim();
       const vid = ytId(raw);
       if (!vid) { status.textContent = '유튜브 주소가 아니에요. youtu.be/… 또는 youtube.com/watch?v=… 를 넣어 주세요.'; return; }
-      status.textContent = '제목을 불러오는 중…';
-      const meta = await lookupYoutube();
-      state.items.push({
-        id: genId('o_'), cat: catId, kind: 'youtube',
+      // 주소가 그대로면 제목을 다시 물어보지 않는다 — 손으로 고쳐 둔 제목이 도로 덮인다
+      const sameVid = edit && edit.vid === vid;
+      let meta = null;
+      if (!sameVid) { status.textContent = '제목을 불러오는 중…'; meta = await lookupYoutube(); }
+      const row = {
+        cat: catId, kind: 'youtube',
         url: `https://www.youtube.com/watch?v=${vid}`, vid,
-        title: title || (meta && meta.title) || '유튜브 영상',
-        poster: (meta && meta.image) || '', note, added_at: nowIso(),
-      });
+        title: title || (meta && meta.title) || (edit && edit.title) || '유튜브 영상',
+        poster: (meta && meta.image) || (sameVid && edit.poster) || `https://img.youtube.com/vi/${vid}/hqdefault.jpg`,
+        note,
+      };
+      if (edit) Object.assign(edit, row);
+      else state.items.push({ id: genId('o_'), added_at: nowIso(), ...row });
     } else {
-      if (!pickedFile) { status.textContent = '동영상 파일을 골라 주세요.'; return; }
-      $('uploadBar').classList.remove('hidden');
-      status.textContent = '올리는 중… 앱을 닫지 마세요.';
-      const key = await uploadFile(pickedFile, pct => {
-        $('uploadFill').style.width = pct + '%'; $('uploadPct').textContent = pct + '%';
-      });
-      state.items.push({
-        id: genId('o_'), cat: catId, kind: 'file', key,
-        mime: pickedFile.type || 'video/mp4', size: pickedFile.size,
-        title: title || pickedFile.name.replace(/\.[^.]+$/, ''),
-        poster: pickedPoster, note, added_at: nowIso(),
-      });
+      if (!edit && !pickedFile) { status.textContent = '동영상 파일을 골라 주세요.'; return; }
+      let key = edit ? edit.key : '';
+      let oldKey = '';
+      if (pickedFile) {                      // 새로 고른 파일이 있을 때만 올린다
+        $('uploadBar').classList.remove('hidden');
+        status.textContent = '올리는 중… 앱을 닫지 마세요.';
+        oldKey = key;
+        key = await uploadFile(pickedFile, pct => {
+          $('uploadFill').style.width = pct + '%'; $('uploadPct').textContent = pct + '%';
+        });
+      }
+      const row = {
+        cat: catId, kind: 'file', key,
+        mime: pickedFile ? (pickedFile.type || 'video/mp4') : (edit ? edit.mime : 'video/mp4'),
+        size: pickedFile ? pickedFile.size : (edit ? edit.size : 0),
+        title: title || (pickedFile ? pickedFile.name.replace(/\.[^.]+$/, '') : (edit && edit.title)) || '내 영상',
+        poster: pickedFile ? pickedPoster : (edit ? edit.poster : ''),
+        note,
+      };
+      if (edit) Object.assign(edit, row);
+      else state.items.push({ id: genId('o_'), added_at: nowIso(), ...row });
+      // 바꿔치운 옛 파일은 R2 에서 치운다. 목록에서 빠진 채로 두면 용량만 먹는다.
+      // 새 것을 다 올린 뒤에 지워야 중간에 실패해도 볼 영상이 남는다.
+      if (oldKey && oldKey !== key) {
+        try { await fetch(`${API_BASE}/api/video/${oldKey}`, { method: 'DELETE', headers: { 'X-Edit-Token': getToken() } }); } catch {}
+      }
     }
     activeCat = catId;
     saveAndSync(); render();
     $('addDialog').close();
+    editItemId = null;
   } catch (e) {
     status.textContent = (e && e.message) || '등록하지 못했어요.';
   } finally {
@@ -630,7 +686,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   $('btnLock').onclick = promptToken;
   $('btnDeleteMode').onclick = () => { if (!canEdit()) { alert('먼저 🔒 를 눌러 비밀번호를 넣어 주세요.'); return; } toggleDeleteMode(); };
-  $('btnAdd').onclick = openAddDialog;
+  $('btnAdd').onclick = () => openAddDialog(null);
 
   // 등록 다이얼로그
   document.querySelectorAll('#kindSeg button').forEach(b => b.onclick = () => setKind(b.dataset.kind));
@@ -645,7 +701,7 @@ document.addEventListener('DOMContentLoaded', () => {
     fillCatSelect(); $('fCat').value = c.id; toggleNewCatRow(false); renderTabs();
   };
   $('btnNewCatCancel').onclick = () => { $('fCat').value = (state.cats[0] || {}).id || '__new'; toggleNewCatRow($('fCat').value === '__new'); };
-  $('addCancel').onclick = () => $('addDialog').close();
+  $('addCancel').onclick = () => { $('addDialog').close(); editItemId = null; };
   $('addSave').onclick = saveAdd;
 
   // 분류 관리
