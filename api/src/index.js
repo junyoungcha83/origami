@@ -172,6 +172,19 @@ export default {
       return json({ error: 'method_not_allowed' }, 405, cors);
     }
 
+    // 비밀번호가 맞는지만 알려 준다. 앱이 비밀번호를 받은 그 자리에서 확인할 수 있게
+    // 둔 것 — 없으면 나중에 뭔가 저장할 때에야 틀린 줄 알게 된다.
+    // 값이 얼마나 긴지도 함께 보낸다. 껍데기에 눈에 안 보이는 공백이나 줄바꿈이 섞여
+    // 들어간 경우(파이프로 넣다 보면 생긴다) 길이만 견줘 봐도 바로 드러난다.
+    if (p === '/api/check') {
+      const ok = authed(req, env);
+      return json({
+        ok,
+        sent: (req.headers.get('X-Edit-Token') || '').length,
+        stored: env.EDIT_TOKEN ? env.EDIT_TOKEN.length : 0,
+      }, ok ? 200 : 401, cors);
+    }
+
     if (p === '/api/preview' && req.method === 'GET') {
       if (!authed(req, env)) return json({ error: 'unauthorized' }, 401, cors);
       const target = url.searchParams.get('url') || '';

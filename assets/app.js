@@ -8,7 +8,7 @@
 // X·페이스북·네이버는 자기네 재생기만 허용하고 배속 조작을 안 열어 줘서 아예 안 받는다.
 'use strict';
 
-const APP_VER = 'v3';
+const APP_VER = 'v4';
 const API_BASE = 'https://origami-api.junyoung-cha83.workers.dev';
 const STORAGE_KEY = 'origami-state-v1';
 const TOKEN_KEY = 'origami-edit-token';
@@ -118,14 +118,32 @@ async function pushToServer() {
 }
 
 // ── 편집 잠금 ────────────────────────────────────
-function promptToken() {
+async function promptToken() {
   if (canEdit()) {
     if (!confirm('편집을 잠글까요? (읽기만 가능해집니다)')) return;
     try { localStorage.removeItem(TOKEN_KEY); } catch {}
   } else {
     const v = prompt('편집 비밀번호를 넣어 주세요.');
     if (v == null) return;
-    try { localStorage.setItem(TOKEN_KEY, v.trim()); } catch {}
+    const t = v.trim();
+    // 받은 그 자리에서 맞는지 물어본다. 예전에는 나중에 뭔가 저장할 때에야 틀린 줄
+    // 알게 돼서, 무엇 때문에 안 되는지 짚기 어려웠다.
+    setSync('saving');
+    let r = null;
+    try { r = await fetch(`${API_BASE}/api/check`, { headers: { 'X-Edit-Token': t } }); } catch {}
+    if (!r) { setSync('error'); alert('서버에 닿지 못했어요. 인터넷을 확인해 주세요.'); return; }
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      setSync('error');
+      // 길이가 같은데 안 맞으면 글자 자체가 다른 것, 다르면 공백·줄바꿈이 섞였을 확률이 높다
+      const hint = (j.sent && j.stored && j.sent !== j.stored)
+        ? `\n\n(넣으신 것 ${j.sent}자 · 서버에 든 것 ${j.stored}자 — 길이가 다릅니다. 서버 쪽에 빈칸이나 줄바꿈이 섞였을 수 있어요)`
+        : '';
+      alert('비밀번호가 맞지 않아요.' + hint);
+      return;
+    }
+    try { localStorage.setItem(TOKEN_KEY, t); } catch {}
+    setSync('saved');
   }
   if (deleteMode) toggleDeleteMode();
   updateLockUI(); render();
