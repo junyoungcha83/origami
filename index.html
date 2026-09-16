@@ -4,7 +4,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>종이접기</title>
-<link rel="stylesheet" href="assets/app.css?v=8" />
+<link rel="stylesheet" href="assets/app.css?v=9" />
 <link rel="manifest" href="manifest.webmanifest" />
 <meta name="theme-color" content="#e94f6b" />
 <link rel="icon" type="image/svg+xml" href="assets/icon.svg" />
@@ -117,6 +117,7 @@
   <div class="player-bar">
     <button class="player-close" id="playerClose" type="button">← 목록</button>
     <span class="player-title" id="playerTitle"></span>
+    <button class="player-rotate" id="btnRotate" type="button" title="가로로 크게 보기">⛶ 가로</button>
     <a class="player-open hidden" id="playerOpen" target="_blank" rel="noopener noreferrer">유튜브에서 ↗</a>
   </div>
 
@@ -154,7 +155,7 @@
   </div>
 </div>
 
-<script src="assets/app.js?v=8"></script>
+<script src="assets/app.js?v=9"></script>
 <script>
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
     let reloaded = false;

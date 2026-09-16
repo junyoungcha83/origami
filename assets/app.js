@@ -8,7 +8,7 @@
 // X·페이스북·네이버는 자기네 재생기만 허용하고 배속 조작을 안 열어 줘서 아예 안 받는다.
 'use strict';
 
-const APP_VER = 'v8';
+const APP_VER = 'v9';
 const API_BASE = 'https://origami-api.junyoung-cha83.workers.dev';
 const STORAGE_KEY = 'origami-state-v1';
 const TOKEN_KEY = 'origami-edit-token';
@@ -627,13 +627,17 @@ async function openPlayer(id) {
     vidEl.play().catch(() => {});
     applyRate(); startTick();
   }
-  updateAbView(); syncPlayBtn();
+  updateAbView(); syncPlayBtn(); syncRotateBtn();
+  // 지난번에 가로로 보기로 해 뒀으면 말없이 이어 간다(안 되는 폰이면 조용히 넘어간다)
+  if (wantLandscape() && !landOn) enterLandscape(true);
   document.querySelectorAll('#rateSeg button').forEach(b => b.classList.toggle('on', Number(b.dataset.rate) === rate));
   $('btnLoop').classList.remove('on');
 }
 
 function closePlayer(fromPop) {
   if ($('player').classList.contains('hidden')) return;
+  // 고른 값은 기억해 두되(다음에 또 가로로), 목록으로 나갈 때는 풀어 준다
+  if (landOn) { const keep = true; exitLandscape().then(() => rememberLandscape(keep)); }
   stopTick(); stopAb();
   if (ctl) { ctl.destroy(); ctl = null; }
   ytPlayer = null;
@@ -642,6 +646,51 @@ function closePlayer(fromPop) {
   document.body.classList.remove('playing');
   cur = null;
   if (!fromPop) { try { if (history.state && history.state.player) history.back(); } catch {} }
+}
+
+// ── 가로로 크게 보기 ────────────────────────────
+// 폰 설정의 '화면 자동 회전' 과 상관없이 앱이 화면을 눕힌다.
+// 다만 브라우저는 '전체화면일 때만' 방향 잠금을 허락한다 — 아무 웹페이지나 남의 폰을
+// 돌려 버리면 안 되기 때문이다. 그래서 전체화면으로 들어간 뒤 잠근다.
+// 아이폰 사파리는 방향 잠금을 아예 지원하지 않아, 전체화면까지만 되고 돌아가지는 않는다.
+const LAND_KEY = 'origami-landscape';
+let landOn = false;
+function wantLandscape() { try { return localStorage.getItem(LAND_KEY) === '1'; } catch { return false; } }
+function rememberLandscape(on) { try { localStorage.setItem(LAND_KEY, on ? '1' : '0'); } catch {} }
+
+async function enterLandscape(quiet) {
+  const el = $('player');
+  try {
+    if (!document.fullscreenElement) {
+      const rq = el.requestFullscreen || el.webkitRequestFullscreen;
+      if (!rq) throw new Error('no-fullscreen');
+      await rq.call(el);
+    }
+    if (!(screen.orientation && screen.orientation.lock)) throw new Error('no-lock');
+    await screen.orientation.lock('landscape');
+    landOn = true; rememberLandscape(true);
+  } catch (e) {
+    // 전체화면까지는 됐는데 방향만 못 돌린 경우(아이폰 등) — 화면은 그대로 두고 알려만 준다
+    landOn = !!document.fullscreenElement;
+    if (!quiet) {
+      alert(document.fullscreenElement
+        ? '이 폰은 앱에서 화면을 돌리는 것을 막고 있어요. 폰을 옆으로 눕히면 가로로 보입니다.'
+        : '가로 보기를 켤 수 없어요. 폰을 옆으로 눕혀 주세요.');
+    }
+  }
+  syncRotateBtn();
+}
+async function exitLandscape() {
+  try { if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock(); } catch {}
+  try { if (document.fullscreenElement) await (document.exitFullscreen || document.webkitExitFullscreen).call(document); } catch {}
+  landOn = false; rememberLandscape(false);
+  syncRotateBtn();
+}
+function syncRotateBtn() {
+  const b = $('btnRotate'); if (!b) return;
+  b.classList.toggle('on', landOn);
+  b.textContent = landOn ? '⤢ 원래대로' : '⛶ 가로';
+  b.title = landOn ? '세로로 돌아가기' : '가로로 크게 보기';
 }
 
 function showStageMsg(t) {
@@ -730,6 +779,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 재생기
   $('playerClose').onclick = () => closePlayer();
+  $('btnRotate').onclick = () => (landOn ? exitLandscape() : enterLandscape(false));
+  // 시스템 뒤로가기나 화면 쓸어내리기로 전체화면이 풀릴 수 있다 — 단추 모양을 맞춘다
+  document.addEventListener('fullscreenchange', () => {
+    if (!document.fullscreenElement) { landOn = false; syncRotateBtn(); }
+  });
   document.querySelectorAll('#rateSeg button').forEach(b => b.onclick = () => setRate(Number(b.dataset.rate)));
   $('btnPlay').onclick = () => { if (!ctl) return; ctl.paused() ? ctl.play() : ctl.pause(); setTimeout(syncPlayBtn, 100); };
   $('btnBack5').onclick = () => ctl && ctl.seek(ctl.time() - 5);

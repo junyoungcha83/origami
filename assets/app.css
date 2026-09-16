@@ -224,3 +224,9 @@ body:not(.readonly):not(.deleting) .card-edit{ display:block; }
   .pill{ flex:1 1 auto; text-align:center; padding:10px 10px; }
   .ab-view{ flex:1 1 100%; }
 }
+
+/* 가로로 크게 보기 단추 */
+.player-rotate{ flex:none; border:1px solid rgba(255,255,255,.28); background:rgba(255,255,255,.12);
+  color:#fff; border-radius:9px; padding:8px 12px; font-size:.82rem; font-weight:800; cursor:pointer; }
+.player-rotate:active{ background:rgba(255,255,255,.3); }
+.player-rotate.on{ background:var(--brand); border-color:var(--brand); }
