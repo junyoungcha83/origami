@@ -200,3 +200,27 @@ body:not(.readonly):not(.deleting) .card-edit{ display:block; }
    다섯 자까지라 줄바꿈은 없지만, 옛 자료에 긴 메모가 있으면 잘라 보여 준다. */
 .badge{ max-width:70%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
   box-shadow:0 2px 6px rgba(0,0,0,.35); }
+
+/* ── 폰을 옆으로 눕혔을 때의 재생 화면 ──
+   세로 배치 그대로 두면 조작 막대가 낮은 화면의 절반 가까이를 먹어 영상이 손톱만 해진다.
+   눕히면 막대를 오른쪽으로 옮겨 세워, 영상이 높이를 다 쓰게 한다.
+   높이로 가르는 것은 태블릿·컴퓨터처럼 가로라도 넉넉한 화면까지 건드리지 않으려는 것. */
+@media (orientation: landscape) and (max-height: 560px){
+  .player{
+    display:grid;
+    grid-template-columns: 1fr min(280px, 40vw);
+    grid-template-rows: auto 1fr;
+    grid-template-areas: "bar bar" "stage ctrl";
+  }
+  .player-bar{ grid-area:bar; padding:6px 12px; padding-top:max(6px, env(safe-area-inset-top)); }
+  .player-close{ padding:7px 11px; font-size:.82rem; }
+  .stage{ grid-area:stage; min-height:0; min-width:0; }
+  .ctrl{ grid-area:ctrl; min-height:0; overflow-y:auto; gap:8px;
+    padding:10px 12px calc(10px + var(--safe-bottom)); border-left:1px solid rgba(255,255,255,.12); }
+  /* 좁고 긴 칸이라 한 줄에 다 못 넣는다 — 접어 내리되 단추 크기는 줄이지 않는다 */
+  .ctrl-row{ gap:6px; }
+  .ctrl .seg{ flex:1 1 100%; flex-wrap:wrap; }
+  .ctrl .seg button{ flex:1 1 44%; }
+  .pill{ flex:1 1 auto; text-align:center; padding:10px 10px; }
+  .ab-view{ flex:1 1 100%; }
+}
